@@ -2,7 +2,7 @@
 PADS Parkinson’s Disease Smartwatch Dataset Analysis – Includes data extraction from JSON, SQL data transformation and cleaning, ERD design, and insights for tremor pattern analysis using wearable sensor data.
 # Team DataDetectives
 
-# PADS Parkinson's Tremor Analysis Dashboard
+# PADS Parkinson's Tremor Analysis
 Welcome to the Team DataDetectives project! This project focuses on developing innovative solutions for monitoring and managing Parkinson's disease through smartwatch technology. Our aim is to enhance patient care and provide valuable insights to healthcare providers.
 
 ## 1. Executive Summary
