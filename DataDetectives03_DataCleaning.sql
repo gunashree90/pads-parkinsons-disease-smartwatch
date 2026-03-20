@@ -1,14 +1,14 @@
 /*
 ================================================================
-  PADS DATATHON 2026 — SQL DATA CLEANING PIPELINE
+  PADS DATATHON 2026 â€” SQL DATA CLEANING PIPELINE
   Team        : DataDetectives 3
-  Sprint      : I — Data Extraction & Cleaning
+  Sprint      : I â€” Data Extraction & Cleaning
   Dataset     : PADS Parkinsons Disease Smartwatch Dataset
   Date        : March 2026
 ================================================================
 
 ================================================================
-  --SECTION 1 — DEMOGRAPHICS CLEANING
+  --SECTION 1 â€” DEMOGRAPHICS CLEANING
 ================================================================
 
 ----------------------------------------------------------------
@@ -147,7 +147,7 @@ SELECT * FROM Demographics;
 
 
 --================================================================
- -- SECTION 2 — QUESTIONNAIRE RESPONSES CLEANING
+ -- SECTION 2 â€” QUESTIONNAIRE RESPONSES CLEANING
 --================================================================
 
 ----------------------------------------------------------------
@@ -386,7 +386,7 @@ SELECT * FROM nms_response;
 
 
 --================================================================
- -- SECTION 3 — MOVEMENT SENSOR DATA CLEANING
+ -- SECTION 3 â€” MOVEMENT SENSOR DATA CLEANING
 --================================================================
 
 ----------------------------------------------------------------
@@ -398,103 +398,204 @@ DROP TABLE IF EXISTS movement_sensor;
 CREATE TABLE movement_sensor AS
 WITH movement_clean AS (
     SELECT DISTINCT
-        -- Zero-pad subject_id to 3 digits for consistent joins
         LPAD(subject_id::text, 3, '0') AS subject_id,
-        NULLIF(TRIM(study_id),    '') AS study_id,
-        NULLIF(TRIM(device_id),   '') AS device_id,
-        NULLIF(TRIM(record_id),   '') AS record_id,
+        NULLIF(TRIM(study_id), '') AS study_id,
+        NULLIF(TRIM(device_id), '') AS device_id,
+        NULLIF(TRIM(record_id), '') AS record_id,
         NULLIF(TRIM(record_name), '') AS record_name,
-
-        -- Standardise device_location to Left / Right
         CASE
-            WHEN LOWER(TRIM(device_location))
-                 IN ('left','left side','left_hand','left hand')   THEN 'Left'
-            WHEN LOWER(TRIM(device_location))
-                 IN ('right','right side','right_hand','right hand') THEN 'Right'
+            WHEN LOWER(TRIM(device_location)) IN ('left','left side','left_hand','left hand') THEN 'Left'
+            WHEN LOWER(TRIM(device_location)) IN ('right','right side','right_hand','right hand') THEN 'Right'
             ELSE INITCAP(TRIM(device_location))
         END AS device_location,
-
         NULLIF(TRIM(file_name), '') AS file_name,
+        ROUND(time_mean::numeric, 3) AS time_mean,
 
-        -- Round all sensor features to 3 decimal places
-        ROUND(time_mean::numeric,             3) AS time_mean,
-        ROUND(accelerometer_x_mean::numeric,  3) AS accelerometer_x_mean,
-        ROUND(accelerometer_x_std::numeric,   3) AS accelerometer_x_std,
+        ROUND(accelerometer_x_mean::numeric, 3) AS accelerometer_x_mean,
+        ROUND(accelerometer_x_std::numeric, 3) AS accelerometer_x_std,
         ROUND(accelerometer_x_range::numeric, 3) AS accelerometer_x_range,
-        ROUND(accelerometer_x_rms::numeric,   3) AS accelerometer_x_rms,
-        ROUND(accelerometer_y_mean::numeric,  3) AS accelerometer_y_mean,
-        ROUND(accelerometer_y_std::numeric,   3) AS accelerometer_y_std,
+        ROUND(accelerometer_x_rms::numeric, 3) AS accelerometer_x_rms,
+
+        ROUND(accelerometer_y_mean::numeric, 3) AS accelerometer_y_mean,
+        ROUND(accelerometer_y_std::numeric, 3) AS accelerometer_y_std,
         ROUND(accelerometer_y_range::numeric, 3) AS accelerometer_y_range,
-        ROUND(accelerometer_y_rms::numeric,   3) AS accelerometer_y_rms,
-        ROUND(accelerometer_z_mean::numeric,  3) AS accelerometer_z_mean,
-        ROUND(accelerometer_z_std::numeric,   3) AS accelerometer_z_std,
+        ROUND(accelerometer_y_rms::numeric, 3) AS accelerometer_y_rms,
+
+        ROUND(accelerometer_z_mean::numeric, 3) AS accelerometer_z_mean,
+        ROUND(accelerometer_z_std::numeric, 3) AS accelerometer_z_std,
         ROUND(accelerometer_z_range::numeric, 3) AS accelerometer_z_range,
-        ROUND(accelerometer_z_rms::numeric,   3) AS accelerometer_z_rms,
-        ROUND(gyroscope_x_mean::numeric,      3) AS gyroscope_x_mean,
-        ROUND(gyroscope_x_std::numeric,       3) AS gyroscope_x_std,
-        ROUND(gyroscope_x_range::numeric,     3) AS gyroscope_x_range,
-        ROUND(gyroscope_x_rms::numeric,       3) AS gyroscope_x_rms
+        ROUND(accelerometer_z_rms::numeric, 3) AS accelerometer_z_rms,
+
+        ROUND(gyroscope_x_mean::numeric, 3) AS gyroscope_x_mean,
+        ROUND(gyroscope_x_std::numeric, 3) AS gyroscope_x_std,
+        ROUND(gyroscope_x_range::numeric, 3) AS gyroscope_x_range,
+        ROUND(gyroscope_x_rms::numeric, 3) AS gyroscope_x_rms,
+
+        ROUND(gyroscope_y_mean::numeric, 3) AS gyroscope_y_mean,
+        ROUND(gyroscope_y_std::numeric, 3) AS gyroscope_y_std,
+        ROUND(gyroscope_y_range::numeric, 3) AS gyroscope_y_range,
+        ROUND(gyroscope_y_rms::numeric, 3) AS gyroscope_y_rms,
+
+        ROUND(gyroscope_z_mean::numeric, 3) AS gyroscope_z_mean,
+        ROUND(gyroscope_z_std::numeric, 3) AS gyroscope_z_std,
+        ROUND(gyroscope_z_range::numeric, 3) AS gyroscope_z_range,
+        ROUND(gyroscope_z_rms::numeric, 3) AS gyroscope_z_rms
     FROM movement_sensor_raw
 ),
 
--- Pivot to long format: one row per patient per sensor axis
 movement_long AS (
-    SELECT
-        subject_id::integer AS patient_id,
-        record_name         AS movement,
-        device_location     AS side,
-        'Accelerometer'     AS sensor,
-        'X'                 AS axis,
-        accelerometer_x_rms  AS rms,
-        accelerometer_x_std  AS std,
-        time_mean            AS frequency,
-        accelerometer_x_mean AS amplitude,
 
-        -- Tremor severity rating derived from RMS thresholds
-        CASE
-            WHEN accelerometer_x_rms IS NULL THEN NULL
-            WHEN accelerometer_x_rms < 1     THEN 0
-            WHEN accelerometer_x_rms < 3     THEN 1
-            WHEN accelerometer_x_rms < 6     THEN 2
-            ELSE 3
-        END AS tremor_rating
-    FROM movement_clean
+SELECT
+    subject_id::integer AS patient_id,
+    record_name AS movement,
+    device_location AS side,
+    'Accelerometer' AS sensor,
+    'X' AS axis,
+    accelerometer_x_rms AS rms,
+    accelerometer_x_std AS std,
+    time_mean AS frequency,
+    accelerometer_x_mean AS amplitude,
+    CASE
+        WHEN accelerometer_x_rms IS NULL THEN NULL
+        WHEN accelerometer_x_rms < 1 THEN 0
+        WHEN accelerometer_x_rms < 3 THEN 1
+        WHEN accelerometer_x_rms < 6 THEN 2
+        ELSE 3
+    END AS tremor_rating
+FROM movement_clean
+
+UNION ALL
+
+SELECT
+    subject_id::integer,
+    record_name,
+    device_location,
+    'Accelerometer',
+    'Y',
+    accelerometer_y_rms,
+    accelerometer_y_std,
+    time_mean,
+    accelerometer_y_mean,
+    CASE
+        WHEN accelerometer_y_rms IS NULL THEN NULL
+        WHEN accelerometer_y_rms < 1 THEN 0
+        WHEN accelerometer_y_rms < 3 THEN 1
+        WHEN accelerometer_y_rms < 6 THEN 2
+        ELSE 3
+    END
+FROM movement_clean
+
+UNION ALL
+
+SELECT
+    subject_id::integer,
+    record_name,
+    device_location,
+    'Accelerometer',
+    'Z',
+    accelerometer_z_rms,
+    accelerometer_z_std,
+    time_mean,
+    accelerometer_z_mean,
+    CASE
+        WHEN accelerometer_z_rms IS NULL THEN NULL
+        WHEN accelerometer_z_rms < 1 THEN 0
+        WHEN accelerometer_z_rms < 3 THEN 1
+        WHEN accelerometer_z_rms < 6 THEN 2
+        ELSE 3
+    END
+FROM movement_clean
+
+UNION ALL
+
+SELECT
+    subject_id::integer,
+    record_name,
+    device_location,
+    'Gyroscope',
+    'X',
+    gyroscope_x_rms,
+    gyroscope_x_std,
+    time_mean,
+    gyroscope_x_mean,
+    CASE
+        WHEN gyroscope_x_rms IS NULL THEN NULL
+        WHEN gyroscope_x_rms < 1 THEN 0
+        WHEN gyroscope_x_rms < 3 THEN 1
+        WHEN gyroscope_x_rms < 6 THEN 2
+        ELSE 3
+    END
+FROM movement_clean
+
+UNION ALL
+
+SELECT
+    subject_id::integer,
+    record_name,
+    device_location,
+    'Gyroscope',
+    'Y',
+    gyroscope_y_rms,
+    gyroscope_y_std,
+    time_mean,
+    gyroscope_y_mean,
+    CASE
+        WHEN gyroscope_y_rms IS NULL THEN NULL
+        WHEN gyroscope_y_rms < 1 THEN 0
+        WHEN gyroscope_y_rms < 3 THEN 1
+        WHEN gyroscope_y_rms < 6 THEN 2
+        ELSE 3
+    END
+FROM movement_clean
+
+UNION ALL
+
+SELECT
+    subject_id::integer,
+    record_name,
+    device_location,
+    'Gyroscope',
+    'Z',
+    gyroscope_z_rms,
+    gyroscope_z_std,
+    time_mean,
+    gyroscope_z_mean,
+    CASE
+        WHEN gyroscope_z_rms IS NULL THEN NULL
+        WHEN gyroscope_z_rms < 1 THEN 0
+        WHEN gyroscope_z_rms < 3 THEN 1
+        WHEN gyroscope_z_rms < 6 THEN 2
+        ELSE 3
+    END
+FROM movement_clean
 )
 
--- Add surrogate primary key
-SELECT ROW_NUMBER() OVER() AS s_no_pk, *
+SELECT
+    ROW_NUMBER() OVER() AS s_no_pk,
+    *
 FROM movement_long;
-
-
-----------------------------------------------------------------
-  -- 3.2  Primary Key, Unique Constraint & Foreign Key
-----------------------------------------------------------------
-
--- Surrogate PK on serial row number
+=======================================================
 ALTER TABLE movement_sensor
 ADD CONSTRAINT movement_timeseries_pkey
 PRIMARY KEY (s_no_pk);
 
--- Unique constraint to prevent duplicate axis rows per patient/task/side
 ALTER TABLE movement_sensor
 ADD CONSTRAINT uq_movement
 UNIQUE (patient_id, movement, side, sensor, axis);
 
--- FK back to Demographics hub table
 ALTER TABLE movement_sensor
 ADD CONSTRAINT fk_patient_movement
 FOREIGN KEY (patient_id)
-REFERENCES demographics(patient_id);
+REFERENCES demographics (patient_id);
+
+------------------------------------------------------------
+-- Validation
+------------------------------------------------------------
+
+Select * from movement_sensor
 
 
-----------------------------------------------------------------
-  -- 3.3  Final Validation
-----------------------------------------------------------------
-
-SELECT * FROM movement_sensor;
-
-/*
---================================================================
+/*===============================================================
   END OF CLEANING PIPELINE
   DataDetectives 3  |  PADS Datathon 2026  |  Sprint I
 --================================================================
